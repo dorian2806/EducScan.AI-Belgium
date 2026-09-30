@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduScan AI - Générateur d'Exercices depuis vos Cours</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter, Lexend (Readable), OpenDyslexic fallback -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Lexend:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            vanilla: '#FFFDF7',
+            miel: {
+              100: '#FEF3C7',
+              400: '#FBBF24',
+              500: '#F59E0B',
+              600: '#D97706',
+            },
+            corail: {
+              400: '#FB7185',
+              500: '#F43F5E',
+              600: '#E11D48',
+            },
+            turquoise: {
+              400: '#2DD4BF',
+              500: '#14B8A6',
+              600: '#0D9488',
+            },
+            belgeYellow: '#FDDA24',
+            belgeRed: '#EF3340',
+            belgeBlack: '#000000',
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            fun: ['Fredoka', 'cursive'],
+            readable: ['Lexend', 'sans-serif'],
+            dyslexic: ['Comic Sans MS', 'Lexend', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* High contrast mode styles */
+    body.high-contrast {
+      background-color: #000000 !important;
+      color: #FFFF00 !important;
+    }
+    body.high-contrast * {
+      background-color: #000000 !important;
+      color: #FFFF00 !important;
+      border-color: #FFFF00 !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+    body.high-contrast button, body.high-contrast .interactive-btn {
+      border: 3px solid #FFFF00 !important;
+    }
+    body.high-contrast button:hover, body.high-contrast button:focus {
+      background-color: #FFFF00 !important;
+      color: #000000 !important;
+    }
+
+    /* Dyslexia mode styles */
+    body.dyslexia-mode {
+      font-family: 'Comic Sans MS', 'Lexend', sans-serif !important;
+      letter-spacing: 0.08em !important;
+      word-spacing: 0.25em !important;
+      line-height: 1.9 !important;
+      background-color: #F8F6EF !important;
+    }
+    body.dyslexia-mode p, body.dyslexia-mode h1, body.dyslexia-mode h2, body.dyslexia-mode h3, body.dyslexia-mode button, body.dyslexia-mode span {
+      letter-spacing: 0.08em !important;
+      word-spacing: 0.2em !important;
+    }
+
+    /* Reduced Motion */
+    body.reduced-motion *, body.reduced-motion *::before, body.reduced-motion *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    /* Scanner Effect Animation */
+    @keyframes scanAnimation {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 90%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .scanner-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, #2DD4BF, #FBBF24, #FB7185, transparent);
+      box-shadow: 0 0 15px #2DD4BF, 0 0 25px #FBBF24;
+      animation: scanAnimation 2s infinite ease-in-out;
+    }
+
+    /* Custom Focus Outline for WCAG Accessibility */
+    *:focus-visible {
+      outline: 4px solid #F59E0B !important;
+      outline-offset: 3px !important;
+    }
+
+    /* Custom 3D Card Flip for Flashcards */
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+    .transform-style-3d {
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .backface-hidden {
+      backface-visibility: hidden;
+    }
+    .rotate-y-180 {
+      transform: rotateY(180deg);
+    }
+
+    /* Print styles for cleaner exam generator */
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .printable-area {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-vanilla text-slate-800 min-h-full flex flex-col font-sans transition-colors duration-200">
+
+  <!-- ACCESSIBILITY BAR (TOP) -->
+  <header class="no-print bg-slate-900 text-white py-2 px-4 shadow-md z-50">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center text-xs md:text-sm gap-2">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-miel-400 flex items-center gap-1">
+          <i class="fa-solid fa-universal-access">
+          </i> Accessibilité :
+        </span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+        <!-- Toggle Dyslexie -->
+        <button id="toggleDyslexia" onclick="toggleDyslexiaMode()" aria-pressed="false" class="bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1 rounded-full border border-slate-600 flex items-center gap-1.5 transition active:scale-95">
+          <i class="fa-solid fa-font">
+          </i>
+          <span>Mode Dyslexie</span>
+        </button>
+        <!-- Toggle Contraste Élevé -->
+        <button id="toggleContrast" onclick="toggleHighContrast()" aria-pressed="false" class="bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1 rounded-full border border-slate-600 flex items-center gap-1.5 transition active:scale-95">
+          <i class="fa-solid fa-circle-half-stroke">
+          </i>
+          <span>Contraste Élevé</span>
+        </button>
+        <!-- Toggle Mouvements Réduits -->
+        <button id="toggleMotion" onclick="toggleReducedMotion()" aria-pressed="false" class="bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-1 rounded-full border border-slate-600 flex items-center gap-1.5 transition active:scale-95">
+          <i class="fa-solid fa-person-running">
+          </i>
+          <span>Mouvements Réduits</span>
+        </button>
+        <!-- Clé API Modal Button -->
+        <button onclick="openApiKeyModal()" class="bg-miel-500 hover:bg-miel-600 text-slate-900 font-bold px-3 py-1 rounded-full flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-key">
+          </i>
+          <span id="apiKeyStatusText">Clé API Gemini</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN NAVIGATION & HERO BANNER -->
+  <nav class="no-print bg-white/80 backdrop-blur-md border-b border-amber-100 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <!-- Badge Belge -->
+        <div class="flex h-8 w-6 rounded overflow-hidden shadow-sm border border-slate-200 flex-shrink-0" title="Adapté au système éducatif belge">
+          <div class="bg-belgeBlack w-1/3 h-full">
+          </div>
+          <div class="bg-belgeYellow w-1/3 h-full">
+          </div>
+          <div class="bg-belgeRed w-1/3 h-full">
+          </div>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight font-fun flex items-center gap-2">
+            EduScan <span class="text-miel-500">AI</span>
+            <span class="text-xs font-sans px-2 py-0.5 bg-turquoise-100 text-turquoise-800 rounded-full font-semibold border border-turquoise-200">Édition Belge 🇧🇪</span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- User XP & Streaks Bar -->
+      <div class="flex items-center gap-3 bg-amber-50 px-3 py-1.5 rounded-2xl border border-amber-200">
+        <div class="flex items-center gap-1.5 text-miel-600 font-bold text-sm" title="Série de jours consécutifs">
+          <i class="fa-solid fa-fire text-amber-500 animate-pulse">
+          </i>
+          <span id="userStreak">1</span> <span class="hidden sm:inline">j</span>
+        </div>
+        <div class="h-4 w-px bg-amber-200">
+        </div>
+        <div class="flex items-center gap-1.5 text-turquoise-700 font-bold text-sm" title="Points d'expérience d'apprentissage">
+          <i class="fa-solid fa-star text-miel-400">
+          </i>
+          <span id="userXP">0</span> <span class="hidden sm:inline">XP</span>
+        </div>
+        <button onclick="openNotebookModal()" class="ml-1 bg-white hover:bg-amber-100 text-slate-700 p-1.5 rounded-xl border border-amber-200 transition relative" title="Mon Carnet d'Erreurs & Cartes à Réviser">
+          <i class="fa-solid fa-book-bookmark text-corail-500">
+          </i>
+          <span id="notebookBadge" class="hidden absolute -top-1 -right-1 bg-corail-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">0</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN LAYOUT -->
+  <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: MASCOT & STEP CONFIGURATION -->
+    <section class="lg:col-span-5 flex flex-col gap-6 no-print">
+
+      <!-- MASCOT FRITOU LE BELGE BOX -->
+      <div class="bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100/60 p-5 rounded-3xl border-2 border-amber-200/80 shadow-md flex items-center gap-4 relative overflow-hidden">
+        <!-- Mascotte Vectorielle SVG Fritou -->
+        <div class="w-24 h-24 md:w-28 md:h-28 flex-shrink-0 relative group cursor-pointer" onclick="speakMascotQuote()" title="Clique sur Fritou pour t'encourager !">
+          <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-md transform group-hover:scale-105 transition duration-200">
+            <!-- Cornet de frites -->
+            <path d="M60,110 L140,110 L125,185 L75,185 Z" fill="#EF3340" stroke="#000" stroke-width="4"/>
+            <!-- Motif Belge sur Cornet -->
+            <path d="M60,110 L86,110 L92,185 L75,185 Z" fill="#000000"/>
+            <path d="M86,110 L113,110 L108,185 L92,185 Z" fill="#FDDA24"/>
+            <!-- Frites joyeuses -->
+            <rect x="70" y="50" width="12" height="65" rx="4" fill="#FBBF24" stroke="#D97706" stroke-width="3" transform="rotate(-12, 76, 80)"/>
+            <rect x="85" y="40" width="13" height="75" rx="4" fill="#FDDA24" stroke="#D97706" stroke-width="3"/>
+            <rect x="102" y="45" width="12" height="70" rx="4" fill="#FBBF24" stroke="#D97706" stroke-width="3" transform="rotate(10, 108, 80)"/>
+            <rect x="118" y="55" width="12" height="60" rx="4" fill="#FDDA24" stroke="#D97706" stroke-width="3" transform="rotate(20, 124, 80)"/>
+            <!-- Mayonnaise crémeuse -->
+            <ellipse cx="100" cy="55" rx="32" ry="12" fill="#FFFDF7" stroke="#FBBF24" stroke-width="2"/>
+            <!-- Yeux Fritou -->
+            <circle cx="85" cy="135" r="7" fill="#000"/>
+            <circle cx="115" cy="135" r="7" fill="#000"/>
+            <circle cx="87" cy="133" r="2.5" fill="#FFF"/>
+            <circle cx="117" cy="133" r="2.5" fill="#FFF"/>
+            <!-- Sourire Belge -->
+            <path d="M88,152 Q100,165 112,152" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+            <!-- Joues roses -->
+            <ellipse cx="78" cy="144" rx="6" ry="4" fill="#FB7185" opacity="0.6"/>
+            <ellipse cx="122" cy="144" rx="6" ry="4" fill="#FB7185" opacity="0.6"/>
+          </svg>
+        </div>
+
+        <!-- Bulle de Dialogue Fritou -->
+        <div class="flex-grow bg-white p-3.5 rounded-2xl border-2 border-amber-300 shadow-sm relative">
+          <div class="absolute -left-2.5 top-1/2 -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-white border-b-8 border-b-transparent"></div>
+          <p class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-0.5">Fritou le Belge 🍟</p>
+          <p id="mascotQuote" class="text-sm font-semibold text-slate-800 leading-snug">
+            "Bravo fieu ! Donne-moi tes notes de cours ou une photo, et je te prépare des exercices aux oignons !"
+          </p>
+          <button onclick="speakMascotQuote()" class="mt-2 text-xs font-bold text-turquoise-600 hover:text-turquoise-800 flex items-center gap-1" title="Écouter la voix de Fritou">
+            <i class="fa-solid fa-volume-high">
+            </i> Écouter Fritou
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 1: SCHOOLLVL SELECTION BELGIUM -->
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="bg-miel-500 text-slate-900 h-6 w-6 rounded-full flex items-center justify-center text-xs font-black">1</span>
+          Niveau Scolaire Belge
+        </h2>
+        <div class="grid grid-cols-2 gap-2.5">
+          <!-- CEB -->
+          <button type="button" onclick="selectSchoolLevel('ceb', this)" class="level-btn active border-2 border-miel-500 bg-miel-50 p-3 rounded-2xl text-left hover:border-miel-500 transition relative focus:outline-none">
+            <div class="font-bold text-slate-900 text-sm">Primaire / CEB</div>
+            <div class="text-xs text-slate-500 font-medium">P1 à P6 (6-12 ans)</div>
+          </button>
+          <!-- CE1D -->
+          <button type="button" onclick="selectSchoolLevel('ce1d', this)" class="level-btn border-2 border-slate-200 p-3 rounded-2xl text-left hover:border-miel-400 transition focus:outline-none">
+            <div class="font-bold text-slate-900 text-sm">1er Degré / CE1D</div>
+            <div class="text-xs text-slate-500 font-medium">1ère - 2ème Sec.</div>
+          </button>
+          <!-- CESS -->
+          <button type="button" onclick="selectSchoolLevel('cess', this)" class="level-btn border-2 border-slate-200 p-3 rounded-2xl text-left hover:border-miel-400 transition focus:outline-none">
+            <div class="font-bold text-slate-900 text-sm">Supérieur Sec. / CESS</div>
+            <div class="text-xs text-slate-500 font-medium">3ème - 6ème Sec.</div>
+          </button>
+          <!-- Supérieur / Unif -->
+          <button type="button" onclick="selectSchoolLevel('sup', this)" class="level-btn border-2 border-slate-200 p-3 rounded-2xl text-left hover:border-miel-400 transition focus:outline-none">
+            <div class="font-bold text-slate-900 text-sm">Supérieur / Unif</div>
+            <div class="text-xs text-slate-500 font-medium">Haute École, Unif</div>
+          </button>
+        </div>
+
+        <!-- SECTION 4: EXEMPLES À REMPLIR EN 1 CLIC (Sous le niveau scolaire) -->
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <label class="block text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles text-miel-500">
+            </i>
+            Ou essayer immédiatement avec un exemple belge :
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="loadPresetExample('geo')" class="text-xs font-semibold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 px-2.5 py-1.5 rounded-xl border border-slate-200 transition flex items-center gap-1">
+              🗺️ Géographie de la Belgique
+            </button>
+            <button onclick="loadPresetExample('histoire')" class="text-xs font-semibold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 px-2.5 py-1.5 rounded-xl border border-slate-200 transition flex items-center gap-1">
+              🦁 Révolution Belge 1830
+            </button>
+            <button onclick="loadPresetExample('sciences')" class="text-xs font-semibold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 px-2.5 py-1.5 rounded-xl border border-slate-200 transition flex items-center gap-1">
+              🌱 La Photosynthèse
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: COURSE INPUT & OCR SCAN -->
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <span class="bg-miel-500 text-slate-900 h-6 w-6 rounded-full flex items-center justify-center text-xs font-black">2</span>
+          Importer ou Saisir le Cours
+        </h2>
+
+        <!-- DRAG AND DROP ZONE -->
+        <div id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" class="border-2 border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-100/50 rounded-2xl p-4 text-center cursor-pointer transition relative overflow-hidden group">
+          <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFileSelect(event)">
+          <div class="flex flex-col items-center gap-2">
+            <div class="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-miel-500 text-xl group-hover:scale-110 transition">
+              <i class="fa-solid fa-camera">
+              </i>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-slate-800">Glisse une photo de ton cours ici</p>
+              <p class="text-xs text-slate-500">ou clique pour parcourir tes fichiers (JPG, PNG)</p>
+            </div>
+          </div>
+          <!-- Preview Container -->
+          <div id="imagePreviewContainer" class="hidden mt-3 relative">
+            <img id="imagePreview" class="max-h-40 mx-auto rounded-xl border border-slate-200 shadow-sm object-contain" alt="Aperçu du cours scanné">
+            <button type="button" onclick="removeImage(event)" class="absolute top-1 right-1 bg-corail-500 text-white rounded-full p-1 h-6 w-6 flex items-center justify-center text-xs shadow hover:bg-corail-600">
+              <i class="fa-solid fa-xmark">
+              </i>
+            </button>
+          </div>
+        </div>
+
+        <!-- MANUAL TEXT AREA -->
+        <div>
+          <label for="courseText" class="block text-xs font-bold text-slate-700 mb-1">Texte ou Notes de cours :</label>
+          <textarea id="courseText" rows="6" class="w-full p-3 rounded-2xl border border-slate-300 focus:border-miel-500 focus:ring-2 focus:ring-miel-200 text-sm transition" placeholder="Colle ton résumé de cours ici, ou écris le chapitre à réviser..."></textarea>
+        </div>
+
+        <!-- STEP 3: EXERCISE TYPE SELECTION -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">Type d'Exercice souhaité :</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="selectExType('qcm', this)" class="type-btn active border-2 border-turquoise-500 bg-turquoise-50 text-slate-900 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-[#2DD4BF] fa-list-check">
+              </i> QCM Choix Multiples
+            </button>
+            <button type="button" onclick="selectExType('truefalse', this)" class="type-btn border-2 border-slate-200 text-slate-700 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-circle-check">
+              </i> Vrai / Faux
+            </button>
+            <button type="button" onclick="selectExType('cloze', this)" class="type-btn border-2 border-slate-200 text-slate-700 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-pen-line">
+              </i> Texte à Trous
+            </button>
+            <button type="button" onclick="selectExType('flashcard', this)" class="type-btn border-2 border-slate-200 text-slate-700 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-layer-group">
+              </i> Flashcards
+            </button>
+          </div>
+        </div>
+
+        <!-- GENERATE BUTTON -->
+        <button id="generateBtn" onclick="generateExercises()" class="w-full bg-miel-500 hover:bg-miel-600 active:scale-[0.99] text-slate-900 font-extrabold py-3.5 px-6 rounded-2xl shadow-lg shadow-amber-500/20 text-base flex items-center justify-center gap-2 transition cursor-pointer">
+          <i class="fa-solid fa-bolt text-lg">
+          </i> Générer mes Exercices !
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: INTERACTIVE EXERCISE WORKSPACE -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- PROCESSING SCANNER STATE (HIDDEN BY DEFAULT) -->
+      <div id="processingState" class="hidden bg-white p-8 rounded-3xl border border-slate-200 shadow-md text-center relative overflow-hidden my-auto">
+        <div class="scanner-line"></div>
+        <div class="w-20 h-20 mx-auto mb-4 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-3xl animate-bounce">
+          <i class="fa-solid fa-robot">
+          </i>
+        </div>
+        <h3 class="text-xl font-extrabold text-slate-900 mb-2 font-fun">Fritou analyse ton cours...</h3>
+        <p class="text-slate-600 text-sm max-w-md mx-auto">
+          "Attends une petite seconde fieu, je mijote les meilleures questions pour faire chauffer tes méninges !"
+        </p>
+      </div>
+
+      <!-- INITIAL WELCOME EMPTY STATE -->
+      <div id="welcomeState" class="bg-white p-8 rounded-3xl border-2 border-dashed border-slate-200 text-center my-auto flex flex-col items-center justify-center min-h-[400px]">
+        <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center text-amber-500 text-3xl mb-4">
+          <i class="fa-solid fa-graduation-cap">
+          </i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-2">Prêt à réviser avec Fritou ?</h3>
+        <p class="text-slate-500 text-sm max-w-md leading-relaxed">
+          Choisis ton niveau scolaire, importe une photo ou un résumé de cours à gauche, ou clique sur l'un des exemples belges pour démarrer une session interactive !
+        </p>
+      </div>
+
+      <!-- EXERCISE ENGINE CONTAINER (HIDDEN UNTIL GENERATED) -->
+      <div id="exerciseEngine" class="hidden flex flex-col gap-4">
+
+        <!-- CONTROLS & SCOREBAR TOP -->
+        <div class="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3 no-print">
+          <div class="flex items-center gap-3">
+            <span id="exerciseTypeBadge" class="px-3 py-1 bg-turquoise-100 text-turquoise-800 font-bold text-xs rounded-full uppercase tracking-wider">
+              QCM
+            </span>
+            <span id="questionCounter" class="text-sm font-bold text-slate-600">Question 1 / 5</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- TTS Control Button -->
+            <button id="ttsButton" onclick="readCurrentQuestionSpeech()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-volume-high">
+              </i> <span id="ttsBtnText">Lire la question</span>
+            </button>
+            <button onclick="exportToPDF()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition" title="Imprimer ou enregistrer la fiche d'exercices">
+              <i class="fa-solid fa-print">
+              </i> Imprimer / PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- EXERCISE CONTAINER -->
+        <div id="activeExerciseCard" class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-md transition-all printable-area">
+          <!-- Question text inserted dynamically -->
+        </div>
+
+        <!-- EXERCISE FOOTER CONTROLS -->
+        <div class="no-print flex flex-wrap justify-between items-center gap-3">
+          <button onclick="regenerateVariants()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold px-4 py-2 rounded-2xl text-xs flex items-center gap-2 transition">
+            <i class="fa-solid fa-arrows-rotate">
+            </i> Générer d'autres variantes sur ce sujet
+          </button>
+          <button onclick="resetAndShuffleCurrent()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-2xl text-xs flex items-center gap-2 transition">
+            <i class="fa-solid fa-shuffle">
+            </i> Mélanger & Recommencer
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL: CARNET D'ERREURS / CARTES À RÉVISER -->
+  <div id="notebookModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="bg-amber-500 p-4 px-6 text-slate-900 flex justify-between items-center">
+        <h3 class="font-bold text-lg font-fun flex items-center gap-2">
+          <i class="fa-solid fa-book-bookmark text-slate-900">
+          </i> Mon Carnet d'Erreurs Belge
+        </h3>
+        <button onclick="closeNotebookModal()" class="text-slate-900 hover:bg-amber-600 rounded-full h-8 w-8 flex items-center justify-center font-bold text-lg">
+          <i class="fa-solid fa-xmark">
+          </i>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto flex-grow" id="notebookContent">
+        <p class="text-slate-500 text-sm text-center py-8">Aucune erreur enregistrée pour le moment ! Continue comme ça, fieu ! 🎉</p>
+      </div>
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+        <button onclick="clearNotebook()" class="text-xs text-corail-600 font-bold hover:underline">Vider le carnet</button>
+        <button onclick="closeNotebookModal()" class="bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLÉ API GEMINI -->
+  <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="bg-slate-900 p-4 px-6 text-white flex justify-between items-center">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-key text-miel-400">
+          </i> Configuration Clé API Gemini
+        </h3>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white rounded-full h-8 w-8 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-xmark">
+          </i>
+        </button>
+      </div>
+      <div class="p-6 flex flex-col gap-4">
+        <p class="text-xs text-slate-600 leading-relaxed">
+          EduScan AI fonctionne en mode <strong>hors-ligne autonome</strong> par défaut avec intelligence de secours !
+          Pour scanner de réelles photos de cours complexes grâce à l'IA Google Gemini, tu peux entrer ta propre clé API.
+        </p>
+        <div>
+          <label for="apiKeyInput" class="block text-xs font-bold text-slate-700 mb-1">Ta clé API Gemini (Optionnel) :</label>
+          <input type="password" id="apiKeyInput" class="w-full p-2.5 rounded-xl border border-slate-300 text-sm focus:border-miel-500 focus:outline-none" placeholder="AIzaSy...">
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="saveApiKey()" class="bg-miel-500 hover:bg-miel-600 text-slate-900 font-bold px-4 py-2 rounded-xl text-xs">
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APP LOGIC -->
+  <script>
+    // --- GLOBAL STATE ---
+    const state = {
+      schoolLevel: 'ceb', // ceb, ce1d, cess, sup
+      exerciseType: 'qcm', // qcm, truefalse, cloze, flashcard
+      courseText: '',
+      imageFile: null,
+      generatedQuestions: [],
+      currentQuestionIndex: 0,
+      userAnswers: {},
+      score: 0,
+      xp: parseInt(localStorage.getItem('eduscan_xp') || '0'),
+      streak: parseInt(localStorage.getItem('eduscan_streak') || '1'),
+      errorNotebook: JSON.parse(localStorage.getItem('eduscan_notebook') || '[]'),
+      geminiApiKey: localStorage.getItem('eduscan_gemini_key') || '',
+      isSpeaking: false
+    };
+
+    // Mascot Speech lines (Belgian accents/expressions)
+    const mascotQuotes = [
+      "Bravo fieu ! Tu as la vraie patate belge !",
+      "Oufti, quelle mémoire de titan !",
+      "C'est nickel chromé ! Continuons l'effort !",
+      "À ce rythme-là, le CEB ou le CESS sera dans la poche !",
+      "Pas de tracas, les erreurs c'est juste le début du succès !",
+      "Aie aie aie, concentre-toi une petite seconde fieu !"
+    ];
+
+    // --- ACCESSIBILITY FUNCTIONS ---
+    function toggleDyslexiaMode() {
+      const isDyslexia = document.body.classList.toggle('dyslexia-mode');
+      document.getElementById('toggleDyslexia').setAttribute('aria-pressed', isDyslexia);
+      speakFeedback(isDyslexia ? "Mode Dyslexie activé" : "Mode Dyslexie désactivé");
+    }
+
+    function toggleHighContrast() {
+      const isContrast = document.body.classList.toggle('high-contrast');
+      document.getElementById('toggleContrast').setAttribute('aria-pressed', isContrast);
+      speakFeedback(isContrast ? "Mode Contraste Élevé activé" : "Mode Contraste désactivé");
+    }
+
+    function toggleReducedMotion() {
+      const isMotion = document.body.classList.toggle('reduced-motion');
+      document.getElementById('toggleMotion').setAttribute('aria-pressed', isMotion);
+      speakFeedback(isMotion ? "Mouvements réduits activés" : "Mouvements réduits désactivés");
+    }
+
+    // Web Speech API Synthesis
+    function speakText(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'fr-BE'; // Belgian French prompt preference
+      utterance.rate = 0.95;
+      utterance.onend = () => {
+        state.isSpeaking = false;
+        const btn = document.getElementById('ttsBtnText');
+        if (btn) btn.innerText = "Lire la question";
+      };
+      state.isSpeaking = true;
+      const btn = document.getElementById('ttsBtnText');
+      if (btn) btn.innerText = "Arrêter la lecture";
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function speakFeedback(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'fr-BE';
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function speakMascotQuote() {
+      const quote = document.getElementById('mascotQuote').innerText;
+      speakText(quote);
+    }
+
+    function readCurrentQuestionSpeech() {
+      if (state.isSpeaking) {
+        window.speechSynthesis.cancel();
+        state.isSpeaking = false;
+        document.getElementById('ttsBtnText').innerText = "Lire la question";
+        return;
+      }
+      if (!state.generatedQuestions.length) return;
+      const q = state.generatedQuestions[state.currentQuestionIndex];
+      let fullText = q.question || q.front;
+      if (q.options) {
+        fullText += ". Choix : " + q.options.join(", ");
+      }
+      speakText(fullText);
+    }
+
+    // Web Audio API Synthesizer (No external audio files)
+    function playAudioSound(type) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+          osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+          osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.4);
+        } else if (type === 'error') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, ctx.currentTime); // A3
+          osc.frequency.setValueAtTime(196, ctx.currentTime + 0.15); // G3
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        }
+      } catch (e) {
+        console.log('Audio disabled or restricted');
+      }
+    }
+
+    // --- SELECTION HANDLERS ---
+    function selectSchoolLevel(lvl, btnElement) {
+      state.schoolLevel = lvl;
+      document.querySelectorAll('.level-btn').forEach(b => {
+        b.classList.remove('active', 'border-miel-500', 'bg-miel-50');
+        b.classList.add('border-slate-200');
+      });
+      btnElement.classList.add('active', 'border-miel-500', 'bg-miel-50');
+      btnElement.classList.remove('border-slate-200');
+    }
+
+    function selectExType(type, btnElement) {
+      state.exerciseType = type;
+      document.querySelectorAll('.type-btn').forEach(b => {
+        b.classList.remove('active', 'border-turquoise-500', 'bg-turquoise-50', 'text-slate-900');
+        b.classList.add('border-slate-200', 'text-slate-700');
+      });
+      btnElement.classList.add('active', 'border-turquoise-500', 'bg-turquoise-50', 'text-slate-900');
+      btnElement.classList.remove('border-slate-200', 'text-slate-700');
+    }
+
+    // SECTION 4: PRESET EXAMPLES BELGIUM
+    const presetExamples = {
+      geo: `La Belgique est un État fédéral situé en Europe de l'Ouest. Elle est composée de 3 Régions : la Région flamande, la Région wallonne et la Région de Bruxelles-Capitale. La Belgique compte également 3 Communautés linguistiques : la Communauté française (Fédération Wallonie-Bruxelles), la Communauté flamande et la Communauté germanophone. La capitale de la Belgique est Bruxelles, qui abrite aussi les principales institutions de l'Union Européenne. Le plus haut sommet du pays est le Signal de Botrange à 694 mètres d'altitude.`,
+      histoire: `La Révolution belge de 1830 a mené à l'indépendance de la Belgique vis-à-vis du Royaume-Uni des Pays-Bas. Tout a commencé le 25 août 1830 au théâtre de la Monnaie à Bruxelles lors de la représentation de l'opéra "La Muette de Portici". Les émeutes qui ont suivi ont conduit aux Journées de Septembre. Le 4 octobre 1830, le Gouvernement Provisoire proclame l'indépendance nationale. Léopold Ier est devenu le premier Roi des Belges en prêtant serment sur la Constitution le 21 juillet 1831, jour devenu la Fête Nationale belge.`,
+      sciences: `La photosynthèse est le processus biologique par lequel les plantes vertes fabriquent de la matière organique (comme le glucose) à partir d'eau, de dioxyde de carbone (CO2) et de la lumière du soleil. Ce processus se déroule dans les chloroplastes des cellules végétales grâce à un pigment appelé chlorophylle. La réaction rejette de l'oxygène (O2) dans l'atmosphère, indispensable à la respiration des êtres vivants.`
+    };
+
+    function loadPresetExample(key) {
+      if (presetExamples[key]) {
+        document.getElementById('courseText').value = presetExamples[key];
+        const quotes = [
+          "Super choix fieu ! L'exemple est chargé.",
+          "Voilà un bel extrait belge prêt pour tes révisions !"
+        ];
+        document.getElementById('mascotQuote').innerText = quotes[Math.floor(Math.random() * quotes.length)];
+      }
+    }
+
+    // DRAG AND DROP & IMAGE OCR
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('dropZone').classList.add('bg-amber-100');
+    }
+
+    function handleDragLeave(e) {
+      e.preventDefault();
+      document.getElementById('dropZone').classList.remove('bg-amber-100');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('dropZone').classList.remove('bg-amber-100');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        processImageFile(e.dataTransfer.files[0]);
+      }
+    }
+
+    function handleFileSelect(e) {
+      if (e.target.files && e.target.files[0]) {
+        processImageFile(e.target.files[0]);
+      }
+    }
+
+    function processImageFile(file) {
+      state.imageFile = file;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('imagePreview').src = e.target.result;
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+        document.getElementById('mascotQuote').innerText = "Oufti ! Belle photo ! Clique sur 'Générer' pour lancer le scanner néon.";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage(e) {
+      e.stopPropagation();
+      state.imageFile = null;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('imagePreviewContainer').classList.add('hidden');
+    }
+
+    // --- GEMINI & AUTONOMOUS ENGINE GENERATOR ---
+    async function generateExercises() {
+      const courseText = document.getElementById('courseText').value.trim();
+
+      if (!courseText && !state.imageFile) {
+        alert("S'il te plaît, entre du texte de cours ou télécharge une photo !");
+        return;
+      }
+
+      // Display Processing Scanner State
+      document.getElementById('welcomeState').classList.add('hidden');
+      document.getElementById('exerciseEngine').classList.add('hidden');
+      document.getElementById('processingState').classList.remove('hidden');
+
+      // Update mascot quote
+      document.getElementById('mascotQuote').innerText = "Analyse en cours... Fritou prépare tes exercices !";
+
+      setTimeout(async () => {
+        try {
+          if (state.geminiApiKey) {
+            // Attempt Gemini API call
+            state.generatedQuestions = await fetchGeminiGeneratedExercises(courseText);
+          } else {
+            // Autonomous Smart Fallback Generator based on input text
+            state.generatedQuestions = generateAutonomousFallbackExercises(courseText, state.exerciseType);
+          }
+        } catch (err) {
+          console.error("API error, falling back", err);
+          state.generatedQuestions = generateAutonomousFallbackExercises(courseText, state.exerciseType);
+        }
+
+        // Render Generated Exercises
+        state.currentQuestionIndex = 0;
+        state.userAnswers = {};
+        state.score = 0;
+
+        document.getElementById('processingState').classList.add('hidden');
+        document.getElementById('exerciseEngine').classList.remove('hidden');
+        
+        renderCurrentExercise();
+        
+        // Update user stats
+        state.xp += 15;
+        saveUserStats();
+
+      }, 1500); // Realistic scan delay for smooth animation
+    }
+
+    // GEMINI REAL API INTEGRATION
+    async function fetchGeminiGeneratedExercises(text) {
+      const apiKey = state.geminiApiKey;
+      const prompt = `Génère un ensemble de 5 exercices pour le niveau scolaire belge "${state.schoolLevel}" de type "${state.exerciseType}" basés sur le cours suivant : "${text}".
+      Réponds UNIQUEMENT sous forme de JSON valide structuré comme ceci :
+      [
+        {
+          "question": "Texte de la question",
+          "options": ["Choix 1", "Choix 2", "Choix 3", "Choix 4"],
+          "correctIndex": 0,
+          "explanation": "Explication claire et adaptée"
+        }
+      ]`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+      const rawText = data.candidates[0].content.parts[0].text;
+      const cleanedJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanedJson);
+    }
+
+    // AUTONOMOUS FALLBACK GENERATOR (Works offline / without key)
+    function generateAutonomousFallbackExercises(rawText, type) {
+      const text = rawText || "La Belgique est une monarchie constitutionnelle avec Bruxelles pour capitale.";
+      const sentences = text.split('.').filter(s => s.trim().length > 10);
+      
+      const exercises = [];
+
+      if (type === 'qcm') {
+        for (let i = 0; i < Math.min(5, sentences.length || 3); i++) {
+          const sentence = sentences[i] || text;
+          const words = sentence.trim().split(' ').filter(w => w.length > 4);
+          const targetWord = words[Math.floor(Math.random() * words.length)] || "Belgique";
+
+          exercises.push({
+            question: sentence.replace(targetWord, "_______"),
+            options: [
+              targetWord,
+              "Bruxelles",
+              "Léopold",
+              "Wallonie"
+            ].sort(() => Math.random() - 0.5),
+            correctAnswer: targetWord,
+            explanation: `Le mot correct dans cette phrase de cours est "${targetWord}".`
+          });
+        }
+      } else if (type === 'truefalse') {
+        for (let i = 0; i < Math.min(5, sentences.length || 3); i++) {
+          const isTrue = i % 2 === 0;
+          const sentence = sentences[i] || text;
+          exercises.push({
+            question: isTrue ? sentence : sentence.replace("est", "n'est pas").replace("a", "n'a pas"),
+            correctAnswer: isTrue,
+            explanation: isTrue ? "Cette affirmation correspond exactement à ton cours !" : "Attention fieu, cette affirmation a été modifiée !"
+          });
+        }
+      } else if (type === 'cloze') {
+        for (let i = 0; i < Math.min(5, sentences.length || 3); i++) {
+          const sentence = sentences[i] || text;
+          const words = sentence.trim().split(' ').filter(w => w.length > 4);
+          const wordToFill = words[0] || "élément";
+          exercises.push({
+            question: sentence.replace(wordToFill, "_______"),
+            missingWord: wordToFill,
+            explanation: `Le mot manquant était "${wordToFill}".`
+          });
+        }
+      } else if (type === 'flashcard') {
+        for (let i = 0; i < Math.min(5, sentences.length || 3); i++) {
+          const sentence = sentences[i] || text;
+          const parts = sentence.split(':');
+          exercises.push({
+            front: parts[0] || "Concept clé du cours",
+            back: parts[1] || sentence,
+            explanation: "Révise régulièrement cette carte pour fixer la notion !"
+          });
+        }
+      }
+
+      return exercises;
+    }
+
+    // --- RENDER EXERCISES ---
+    function renderCurrentExercise() {
+      const container = document.getElementById('activeExerciseCard');
+      const total = state.generatedQuestions.length;
+      const index = state.currentQuestionIndex;
+      const q = state.generatedQuestions[index];
+
+      // Update Header Badge & Count
+      document.getElementById('exerciseTypeBadge').innerText = state.exerciseType.toUpperCase();
+      document.getElementById('questionCounter').innerText = `Question ${index + 1} / ${total}`;
+
+      if (state.exerciseType === 'qcm') {
+        renderQCMCard(container, q, index, total);
+      } else if (state.exerciseType === 'truefalse') {
+        renderTrueFalseCard(container, q, index, total);
+      } else if (state.exerciseType === 'cloze') {
+        renderClozeCard(container, q, index, total);
+      } else if (state.exerciseType === 'flashcard') {
+        renderFlashcardCard(container, q, index, total);
+      }
+    }
+
+    // 1. QCM CARD
+    function renderQCMCard(container, q, index, total) {
+      const isAnswered = state.userAnswers[index] !== undefined;
+      const selected = state.userAnswers[index];
+
+      let optionsHTML = '';
+      q.options.forEach((opt, optIdx) => {
+        let btnStyle = "border-slate-200 hover:border-amber-400 bg-white text-slate-800";
+        if (isAnswered) {
+          if (opt === q.correctAnswer || optIdx === q.correctIndex) {
+            btnStyle = "border-turquoise-500 bg-turquoise-50 text-turquoise-900 font-bold";
+          } else if (selected === opt || selected === optIdx) {
+            btnStyle = "border-corail-500 bg-corail-50 text-corail-900 font-bold";
+          }
+        }
+
+        optionsHTML += `
+          <button onclick="answerQCM('${opt.replace(/'/g, "\\'")}', ${optIdx})" ${isAnswered ? 'disabled' : ''} 
+            class="w-full text-left p-4 rounded-2xl border-2 ${btnStyle} transition flex items-center justify-between text-sm md:text-base font-medium focus:outline-none">
+            <span>${opt}</span>
+            ${isAnswered && (opt === q.correctAnswer || optIdx === q.correctIndex) ? '<i class="fa-solid fa-circle-check text-turquoise-600 text-lg"></i>' : ''}
+            ${isAnswered && (selected === opt || selected === optIdx) && (opt !== q.correctAnswer && optIdx !== q.correctIndex) ? '<i class="fa-solid fa-circle-xmark text-corail-600 text-lg"></i>' : ''}
+          </button>
+        `;
+      });
+
+      container.innerHTML = `
+        <div class="flex flex-col gap-6">
+          <h3 class="text-lg md:text-xl font-bold text-slate-900 leading-snug">${q.question}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            ${optionsHTML}
+          </div>
+          ${isAnswered ? `
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex flex-col gap-2 animate-fade-in">
+              <div class="font-bold text-amber-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-amber-500"></i> Explication de Fritou :
+              </div>
+              <p class="text-slate-700 text-xs md:text-sm leading-relaxed">${q.explanation}</p>
+            </div>
+            <div class="flex justify-end">
+              <button onclick="nextQuestion()" class="bg-miel-500 hover:bg-miel-600 text-slate-900 font-extrabold px-6 py-2.5 rounded-2xl text-sm transition flex items-center gap-2">
+                ${index + 1 < total ? 'Question suivante' : 'Voir mon Bilan !'} <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function answerQCM(answerText, answerIndex) {
+      const q = state.generatedQuestions[state.currentQuestionIndex];
+      const isCorrect = (answerText === q.correctAnswer) || (answerIndex === q.correctIndex);
+
+      state.userAnswers[state.currentQuestionIndex] = answerText;
+
+      if (isCorrect) {
+        state.score++;
+        state.xp += 10;
+        playAudioSound('success');
+        document.getElementById('mascotQuote').innerText = mascotQuotes[0];
+      } else {
+        playAudioSound('error');
+        document.getElementById('mascotQuote').innerText = mascotQuotes[5];
+        // Save into Error Notebook
+        saveToNotebook(q.question, q.correctAnswer || q.options[q.correctIndex], q.explanation);
+      }
+
+      saveUserStats();
+      renderCurrentExercise();
+    }
+
+    // 2. TRUE / FALSE CARD
+    function renderTrueFalseCard(container, q, index, total) {
+      const isAnswered = state.userAnswers[index] !== undefined;
+      const selected = state.userAnswers[index];
+
+      container.innerHTML = `
+        <div class="flex flex-col gap-6">
+          <h3 class="text-lg md:text-xl font-bold text-slate-900 leading-snug">${q.question}</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <button onclick="answerTrueFalse(true)" ${isAnswered ? 'disabled' : ''} 
+              class="p-6 rounded-2xl border-2 text-center text-lg font-bold transition flex flex-col items-center gap-2 ${
+                isAnswered ? (q.correctAnswer === true ? 'border-turquoise-500 bg-turquoise-50 text-turquoise-800' : 'border-slate-200 text-slate-400') : 'border-slate-200 hover:border-turquoise-400 bg-white text-slate-800'
+              }">
+              <i class="fa-solid fa-thumbs-up text-2xl text-turquoise-500"></i>
+              VRAI
+            </button>
+            <button onclick="answerTrueFalse(false)" ${isAnswered ? 'disabled' : ''} 
+              class="p-6 rounded-2xl border-2 text-center text-lg font-bold transition flex flex-col items-center gap-2 ${
+                isAnswered ? (q.correctAnswer === false ? 'border-corail-500 bg-corail-50 text-corail-800' : 'border-slate-200 text-slate-400') : 'border-slate-200 hover:border-corail-400 bg-white text-slate-800'
+              }">
+              <i class="fa-solid fa-thumbs-down text-2xl text-corail-500"></i>
+              FAUX
+            </button>
+          </div>
+          ${isAnswered ? `
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-sm text-slate-700">
+              <strong>Explication :</strong> ${q.explanation}
+            </div>
+            <div class="flex justify-end">
+              <button onclick="nextQuestion()" class="bg-miel-500 hover:bg-miel-600 text-slate-900 font-extrabold px-6 py-2.5 rounded-2xl text-sm transition">
+                ${index + 1 < total ? 'Suivant' : 'Terminer'}
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function answerTrueFalse(val) {
+      const q = state.generatedQuestions[state.currentQuestionIndex];
+      state.userAnswers[state.currentQuestionIndex] = val;
+      if (val === q.correctAnswer) {
+        state.score++;
+        state.xp += 10;
+        playAudioSound('success');
+      } else {
+        playAudioSound('error');
+        saveToNotebook(q.question, q.correctAnswer ? "Vrai" : "Faux", q.explanation);
+      }
+      saveUserStats();
+      renderCurrentExercise();
+    }
+
+    // 3. CLOZE TEXT CARD
+    function renderClozeCard(container, q, index, total) {
+      const isAnswered = state.userAnswers[index] !== undefined;
+
+      container.innerHTML = `
+        <div class="flex flex-col gap-6">
+          <h3 class="text-lg md:text-xl font-bold text-slate-900 leading-snug">${q.question}</h3>
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-600">Tape le mot manquant :</label>
+            <div class="flex gap-2">
+              <input type="text" id="clozeInput" ${isAnswered ? 'disabled' : ''} value="${state.userAnswers[index] || ''}" 
+                class="flex-grow p-3 rounded-2xl border border-slate-300 font-bold text-slate-900 focus:outline-none focus:border-miel-500" placeholder="Mot manquant...">
+              ${!isAnswered ? `
+                <button onclick="answerCloze()" class="bg-turquoise-500 hover:bg-turquoise-600 text-white font-bold px-5 py-3 rounded-2xl transition">Valider</button>
+              ` : ''}
+            </div>
+          </div>
+          ${isAnswered ? `
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-sm text-slate-700">
+              <strong>Résultat :</strong> ${q.explanation}
+            </div>
+            <div class="flex justify-end">
+              <button onclick="nextQuestion()" class="bg-miel-500 hover:bg-miel-600 text-slate-900 font-extrabold px-6 py-2.5 rounded-2xl text-sm transition">
+                ${index + 1 < total ? 'Suivant' : 'Terminer'}
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function answerCloze() {
+      const input = document.getElementById('clozeInput').value.trim();
+      if (!input) return;
+      const q = state.generatedQuestions[state.currentQuestionIndex];
+      state.userAnswers[state.currentQuestionIndex] = input;
+      
+      if (input.toLowerCase() === (q.missingWord || '').toLowerCase()) {
+        state.score++;
+        state.xp += 10;
+        playAudioSound('success');
+      } else {
+        playAudioSound('error');
+        saveToNotebook(q.question, q.missingWord, q.explanation);
+      }
+      saveUserStats();
+      renderCurrentExercise();
+    }
+
+    // 4. FLASHCARD CARD
+    function renderFlashcardCard(container, q, index, total) {
+      container.innerHTML = `
+        <div class="flex flex-col gap-6 items-center">
+          <div id="flashcardBox" onclick="this.classList.toggle('rotate-y-180')" class="w-full min-h-[220px] bg-amber-50 rounded-3xl border-2 border-amber-300 p-6 flex flex-col items-center justify-center text-center cursor-pointer shadow-sm relative transition duration-500 perspective-1000">
+            <span class="absolute top-3 left-4 text-xs font-bold text-amber-600 uppercase tracking-wider">Clique pour retourner 🔄</span>
+            <div class="text-base md:text-xl font-bold text-slate-900 font-fun">${q.front}</div>
+            <div class="mt-4 pt-4 border-t border-amber-200 text-sm text-slate-700 font-medium">${q.back}</div>
+          </div>
+          <div class="flex justify-between w-full">
+            <button onclick="answerFlashcard(false)" class="bg-corail-100 text-corail-800 font-bold px-4 py-2 rounded-xl text-xs">À revoir</button>
+            <button onclick="answerFlashcard(true)" class="bg-turquoise-100 text-turquoise-800 font-bold px-4 py-2 rounded-xl text-xs">Compris ! (+10 XP)</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function answerFlashcard(known) {
+      if (known) {
+        state.score++;
+        state.xp += 10;
+        playAudioSound('success');
+      } else {
+        const q = state.generatedQuestions[state.currentQuestionIndex];
+        saveToNotebook(q.front, q.back, "Flashcard à réviser");
+      }
+      saveUserStats();
+      nextQuestion();
+    }
+
+    function nextQuestion() {
+      state.currentQuestionIndex++;
+      if (state.currentQuestionIndex < state.generatedQuestions.length) {
+        renderCurrentExercise();
+      } else {
+        renderFinalSummary();
+      }
+    }
+
+    // FINAL SUMMARY CARD WITH CONFETTI
+    function renderFinalSummary() {
+      const container = document.getElementById('activeExerciseCard');
+      const total = state.generatedQuestions.length;
+      const pct = Math.round((state.score / total) * 100);
+
+      if (pct >= 60) {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        document.getElementById('mascotQuote').innerText = mascotQuotes[1];
+      } else {
+        document.getElementById('mascotQuote').innerText = mascotQuotes[4];
+      }
+
+      container.innerHTML = `
+        <div class="text-center flex flex-col items-center gap-4 py-4">
+          <div class="w-20 h-20 bg-miel-100 text-miel-600 rounded-full flex items-center justify-center text-3xl font-black">
+            ${pct}%
+          </div>
+          <h3 class="text-2xl font-extrabold text-slate-900 font-fun">Session terminée !</h3>
+          <p class="text-sm text-slate-600 max-w-md">
+            Tu as obtenu <strong>${state.score} / ${total}</strong> bonnes réponses fieu !
+            ${pct >= 60 ? 'Excellente maîtrise du sujet !' : 'N\'hésite pas à réviser avec ton Carnet d\'Erreurs.'}
+          </p>
+          <div class="flex flex-wrap gap-3 mt-4">
+            <button onclick="resetAndShuffleCurrent()" class="bg-miel-500 hover:bg-miel-600 text-slate-900 font-bold px-6 py-3 rounded-2xl text-sm transition">
+              Recommencer
+            </button>
+            <button onclick="exportToPDF()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 py-3 rounded-2xl text-sm transition">
+              Imprimer / Exporter
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- CARNET D'ERREURS & STORAGE ---
+    function saveToNotebook(question, correctAnswer, explanation) {
+      state.errorNotebook.push({
+        id: Date.now(),
+        question,
+        correctAnswer,
+        explanation,
+        date: new Date().toLocaleDateString('fr-BE')
+      });
+      localStorage.setItem('eduscan_notebook', JSON.stringify(state.errorNotebook));
+      updateNotebookBadge();
+    }
+
+    function updateNotebookBadge() {
+      const badge = document.getElementById('notebookBadge');
+      if (state.errorNotebook.length > 0) {
+        badge.innerText = state.errorNotebook.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function openNotebookModal() {
+      const content = document.getElementById('notebookContent');
+      if (state.errorNotebook.length === 0) {
+        content.innerHTML = `<p class="text-slate-500 text-sm text-center py-8">Aucune erreur enregistrée pour le moment ! Tout est parfait fieu ! 🎉</p>`;
+      } else {
+        let html = '<div class="flex flex-col gap-3">';
+        state.errorNotebook.forEach(item => {
+          html += `
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs sm:text-sm">
+              <p class="font-bold text-slate-900 mb-1">${item.question}</p>
+              <p class="text-turquoise-800 font-semibold mb-1">✔ Réponse exacte : ${item.correctAnswer}</p>
+              <p class="text-slate-600 italic">${item.explanation}</p>
+            </div>
+          `;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      }
+      document.getElementById('notebookModal').classList.remove('hidden');
+    }
+
+    function closeNotebookModal() {
+      document.getElementById('notebookModal').classList.add('hidden');
+    }
+
+    function clearNotebook() {
+      state.errorNotebook = [];
+      localStorage.removeItem('eduscan_notebook');
+      updateNotebookBadge();
+      openNotebookModal();
+    }
+
+    function saveUserStats() {
+      localStorage.setItem('eduscan_xp', state.xp);
+      localStorage.setItem('eduscan_streak', state.streak);
+      document.getElementById('userXP').innerText = state.xp;
+      document.getElementById('userStreak').innerText = state.streak;
+    }
+
+    // --- UTILS & EXPORT ---
+    function openApiKeyModal() {
+      document.getElementById('apiKeyInput').value = state.geminiApiKey;
+      document.getElementById('apiKeyModal').classList.remove('hidden');
+    }
+
+    function closeApiKeyModal() {
+      document.getElementById('apiKeyModal').classList.add('hidden');
+    }
+
+    function saveApiKey() {
+      state.geminiApiKey = document.getElementById('apiKeyInput').value.trim();
+      localStorage.setItem('eduscan_gemini_key', state.geminiApiKey);
+      document.getElementById('apiKeyStatusText').innerText = state.geminiApiKey ? "Clé API Active" : "Clé API Gemini";
+      closeApiKeyModal();
+    }
+
+    function resetAndShuffleCurrent() {
+      state.generatedQuestions.sort(() => Math.random() - 0.5);
+      state.currentQuestionIndex = 0;
+      state.userAnswers = {};
+      state.score = 0;
+      renderCurrentExercise();
+    }
+
+    function regenerateVariants() {
+      generateExercises();
+    }
+
+    function exportToPDF() {
+      window.print();
+    }
+
+    // INIT ON LOAD
+    window.onload = function() {
+      updateNotebookBadge();
+      if (state.geminiApiKey) {
+        document.getElementById('apiKeyStatusText').innerText = "Clé API Active";
+      }
+    };
+  </script>
+</body>
+</html>
